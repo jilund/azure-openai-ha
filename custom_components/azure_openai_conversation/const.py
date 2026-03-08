@@ -4,6 +4,8 @@ import logging
 
 DOMAIN = "azure_openai_conversation"
 LOGGER: logging.Logger = logging.getLogger(__package__)
+EVENT_USER_MESSAGE = f"{DOMAIN}_user_message"
+EVENT_ASSISTANT_RESPONSE = f"{DOMAIN}_assistant_response"
 
 CONF_API_BASE = "api_base"
 CONF_CHAT_MODEL = "chat_model"

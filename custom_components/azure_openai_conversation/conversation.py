@@ -57,6 +57,8 @@ from .const import (
     CONF_WEB_SEARCH_TIMEZONE,
     CONF_WEB_SEARCH_USER_LOCATION,
     DOMAIN,
+    EVENT_ASSISTANT_RESPONSE,
+    EVENT_USER_MESSAGE,
     LOGGER,
     RECOMMENDED_CHAT_MODEL,
     RECOMMENDED_MAX_TOKENS,
@@ -126,6 +128,16 @@ def _convert_content_to_param(
             for tool_call in content.tool_calls
         )
     return messages
+
+
+def _get_latest_message_text(
+    chat_log: conversation.ChatLog, role: Literal["user", "assistant"]
+) -> str | None:
+    """Return the latest text content for the given role."""
+    for content in reversed(chat_log.content):
+        if content.role == role and content.content:
+            return content.content
+    return None
 
 
 async def _transform_stream(
@@ -286,16 +298,55 @@ class AzureOpenAIConversationEntity(
         except conversation.ConverseError as err:
             return err.as_conversation_result()
 
+        self._async_fire_message_event(
+            EVENT_USER_MESSAGE,
+            chat_log,
+            {
+                "text": _get_latest_message_text(chat_log, "user"),
+                "language": user_input.language,
+                "device_id": getattr(user_input, "device_id", None),
+                "context_id": user_input.context.id,
+                "user_id": user_input.context.user_id,
+            },
+        )
+
         await self._async_handle_chat_log(chat_log)
 
         intent_response = intent.IntentResponse(language=user_input.language)
         assert type(chat_log.content[-1]) is conversation.AssistantContent
-        intent_response.async_set_speech(chat_log.content[-1].content or "")
+        assistant_text = chat_log.content[-1].content or ""
+        intent_response.async_set_speech(assistant_text)
+        self._async_fire_message_event(
+            EVENT_ASSISTANT_RESPONSE,
+            chat_log,
+            {
+                "text": assistant_text,
+                "language": user_input.language,
+                "context_id": user_input.context.id,
+                "user_id": user_input.context.user_id,
+            },
+        )
         return conversation.ConversationResult(
             response=intent_response,
             conversation_id=chat_log.conversation_id,
             continue_conversation=chat_log.continue_conversation,
         )
+
+    def _async_fire_message_event(
+        self,
+        event_type: str,
+        chat_log: conversation.ChatLog,
+        event_data: dict[str, Any],
+    ) -> None:
+        """Fire a Home Assistant event for conversation activity."""
+        payload = {
+            "config_entry_id": self.entry.entry_id,
+            "entity_id": self.entity_id,
+            "conversation_id": chat_log.conversation_id,
+            "model": self.entry.options.get(CONF_CHAT_MODEL, RECOMMENDED_CHAT_MODEL),
+        }
+        payload.update({key: value for key, value in event_data.items() if value is not None})
+        self.hass.bus.async_fire(event_type, payload)
 
     async def _async_handle_chat_log(
         self,
