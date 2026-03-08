@@ -402,6 +402,7 @@ class AzureOpenAIConversationEntity(
                 "temperature": options.get(CONF_TEMPERATURE, RECOMMENDED_TEMPERATURE),
                 "user": chat_log.conversation_id,
                 "stream": True,
+                "extra_body": {"litellm_session_id": chat_log.conversation_id},
             }
             if tools:
                 model_args["tools"] = tools
