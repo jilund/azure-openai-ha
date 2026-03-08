@@ -92,7 +92,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
     client = openai.AsyncOpenAI(
-        base_url=normalize_azure_endpoint(data[CONF_API_BASE]),
+        base_url=data[CONF_API_BASE],
         default_query={"api-version": "preview"},
         api_key=data[CONF_API_KEY],
         http_client=get_async_client(hass),
@@ -208,9 +208,7 @@ class AzureOpenAIOptionsFlow(OptionsFlow):
         if zone_home is not None:
             client = openai.AsyncOpenAI(
                 api_key=self.config_entry.data[CONF_API_KEY],
-                base_url=normalize_azure_endpoint(
-                    self.config_entry.data[CONF_API_BASE]
-                ),
+                base_url=self.config_entry.data[CONF_API_BASE],
                 default_query={"api-version": "preview"},
                 http_client=get_async_client(self.hass),
             )
