@@ -79,6 +79,44 @@ The maximum number of words or "tokens" that the AI model should generate in its
 
 - **Top P:** An alternative to temperature, top_p determines the proportion of the most likely word choices the model should consider when generating text. A higher top_p means the model will only consider the most likely words, while a lower top_p means a wider range of words, including less likely ones, will be considered. For more information, see the [Azure OpenAI Completion Documentation](https://learn.microsoft.com/azure/cognitive-services/openai/how-to/completions).
 
+# Events
+
+The integration fires Home Assistant events for completed user and assistant messages. These can be used in automations, template sensors, or custom listeners.
+
+Event types:
+- `azure_openai_conversation_user_message`
+- `azure_openai_conversation_assistant_response`
+
+Each event includes these fields:
+- `config_entry_id`
+- `entity_id`
+- `conversation_id`
+- `model`
+- `text`
+- `language`
+- `context_id`
+- `user_id`
+
+The user message event also includes:
+- `device_id` when Home Assistant provides it for the request
+
+Example automation:
+
+```yaml
+automation:
+   - alias: Log Azure OpenAI assistant replies
+      triggers:
+         - trigger: event
+            event_type: azure_openai_conversation_assistant_response
+      actions:
+         - action: system_log.write
+            data:
+               level: info
+               message: >-
+                  Conversation {{ trigger.event.data.conversation_id }}:
+                  {{ trigger.event.data.text }}
+```
+
 ## API Version change
 
 This value couldn't be changed through options, to update it you must need to delete and recreate the integration. Make sure that you have all required values like API key saved before recreation.
