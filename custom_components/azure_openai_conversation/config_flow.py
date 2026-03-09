@@ -68,7 +68,6 @@ from .const import (
     WEB_SEARCH_MODELS,
 )
 
-from . import normalize_azure_endpoint
 
 _LOGGER = logging.getLogger(__name__)
 
